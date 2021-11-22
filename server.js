@@ -60,10 +60,11 @@ net
       socket.on("close", function () {
         sendAlert(
           clients[pos],
-          `Aviso: O usuário ${clients[pos].nick} se desconectou do chat`
+          `O usuário ${clients[pos].nick} se desconectou do chat`
         );
         console.log(clients[pos].nick + " se desconectou");
-        clients.splice(clients.indexOf(socket), 1);
+        clients[pos] = null;
+        // clients.splice(clients.indexOf(socket), 1);
       });
     } else {
       socket.write(
@@ -86,7 +87,7 @@ function sendMessage(from, message) {
 
 function sendAlert(from, message) {
   clients.forEach((client) => {
-    if (client !== from) client.write(`Aviso: ${message}`);
+    if (client !== from && client !== null) client.write(`Aviso: ${message}`);
   });
 }
 

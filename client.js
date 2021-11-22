@@ -26,7 +26,7 @@ rl.question("Qual o comando? ", function (command) {
       });
     });
   } else {
-    rl.write("Você precisa entrar de mandar mensagens!");
+    rl.write("Você precisa entrar antes de mandar mensagens!");
   }
 });
 
