@@ -31,8 +31,7 @@ rl.question("Qual o comando? ", function (command) {
 });
 
 function connectClient(config) {
-  process.stdin.setEncoding("utf8");
-  process.stdin.resume();
+  client.setEncoding("utf8");
   try {
     client.connect({ host: config.ip, port: config.port }, function () {
       console.log("Aviso: Você se conectou ao servidor");
@@ -42,19 +41,9 @@ function connectClient(config) {
   }
 
   send(`/NICK ${config.nickname}`);
-  let string = "";
-  process.stdin.on("data", function (data) {
-    if (data === "\b") {
-      string = string.slice(0, string.length - 2);
-      stdout.clearLine(0);
-      stdout.cursorTo(0);
-      stdout.write(string);
-    }
-    if (data !== "\r") string += data;
-    else {
-      send(string);
-      string = "";
-    }
+
+  rl.on("line", (input) => {
+    send(input);
   });
 
   client.on("data", function (data) {
