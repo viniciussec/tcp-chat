@@ -21,7 +21,7 @@ rl.question("Qual o comando? ", function (command) {
         config.port = port;
         rl.question("Informe seu apelido: ", function (nickname) {
           config.nickname = nickname;
-          clientConnected(config);
+          connectClient(config);
         });
       });
     });
@@ -30,15 +30,26 @@ rl.question("Qual o comando? ", function (command) {
   }
 });
 
-function clientConnected(config) {
+function connectClient(config) {
   process.stdin.setEncoding("utf8");
   process.stdin.resume();
-  client.connect({ host: config.ip, port: config.port }, function () {
-    console.log("Aviso: Você se conectou ao servidor");
-  });
-  send("/NICK " + config.nickname);
+  try {
+    client.connect({ host: config.ip, port: config.port }, function () {
+      console.log("Aviso: Você se conectou ao servidor");
+    });
+  } catch (e) {
+    console.log("Erro ao conectar ao servidor: \n" + e);
+  }
+
+  send(`/NICK ${config.nickname}`);
   let string = "";
   process.stdin.on("data", function (data) {
+    if (data === "\b") {
+      string = string.slice(0, string.length - 2);
+      stdout.clearLine(0);
+      stdout.cursorTo(0);
+      stdout.write(string);
+    }
     if (data !== "\r") string += data;
     else {
       send(string);
@@ -47,10 +58,14 @@ function clientConnected(config) {
   });
 
   client.on("data", function (data) {
-    console.log(String(data));
+    console.log(JSON.parse(data.toString()).message);
+  });
+
+  client.on("close", function (data) {
+    process.exit();
   });
 
   function send(msg) {
-    client.write(msg);
+    client.write(Buffer.from(JSON.stringify({ message: msg })));
   }
 }

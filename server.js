@@ -8,18 +8,23 @@ net
     const pos = clients.length;
     clients.push(socket);
 
-    if (clients.length <= 4) {
+    if (clientsLength(clients) <= 4) {
       socket.on("data", function (data) {
+        data = JSON.parse(data.toString()).message;
         const dataSplitted = data.split(" ");
         switch (dataSplitted[0]) {
           case "/USUARIOS":
-            console.log("Lista de usuários:");
-            clients.forEach((client) => console.log("- " + client.nick));
+            let string = "";
+            string += "Lista de usuários:\n";
+            clients.forEach((client) => {
+              if (client !== null) string += "- " + client.nick + "\n";
+            });
+            socketWrite(string, socket);
             break;
 
           case "/NICK":
             if (isNickRepeated(dataSplitted[1]))
-              socket.write("Nick já existente");
+              socketWrite("Nick já existente", socket);
             else {
               if (clients[pos].nick !== undefined)
                 sendMessage(
@@ -37,12 +42,7 @@ net
             break;
 
           case "/SAIR":
-            socket.write("Aviso: Você encerrou a conexão!");
-            sendAlert(
-              clients[pos],
-              `O usuário ${clients[pos].nick} se desconectou do chat`
-            );
-            clients[pos] = null;
+            socketWrite("Aviso: Você encerrou a conexão!", socket);
             socket.destroy();
             break;
 
@@ -50,8 +50,9 @@ net
             if (clients[pos].nick !== undefined)
               sendMessage(clients[pos], data);
             else
-              socket.write(
-                "Aviso: Você precisar informar um apelido válido! (Use /NICK {nick} para atualizar seu apelido) "
+              socketWrite(
+                "Aviso: Você precisar informar um apelido válido! (Use /NICK {nick} para atualizar seu apelido) ",
+                socket
               );
             break;
         }
@@ -64,11 +65,11 @@ net
         );
         console.log(clients[pos].nick + " se desconectou");
         clients[pos] = null;
-        // clients.splice(clients.indexOf(socket), 1);
       });
     } else {
-      socket.write(
-        "Aviso: Erro ao conectar ao servidor. O máximo de usuários (4) foi atingido"
+      socketWrite(
+        "Aviso: Erro ao conectar ao servidor. O máximo de usuários (4) foi atingido",
+        socket
       );
       clients[pos] = null;
       socket.destroy();
@@ -77,7 +78,10 @@ net
   .listen(PORT);
 
 function sendMessage(from, message) {
-  const msg = from !== undefined ? `${from.nick}: ${message}` : message;
+  const msg =
+    from !== undefined
+      ? Buffer.from(JSON.stringify({ message: `${from.nick}: ${message}` }))
+      : Buffer.from(JSON.stringify({ message: message }));
   clients.forEach(function (incoming_socket) {
     if (incoming_socket !== from && incoming_socket !== null) {
       incoming_socket.write(msg);
@@ -87,14 +91,29 @@ function sendMessage(from, message) {
 
 function sendAlert(from, message) {
   clients.forEach((client) => {
-    if (client !== from && client !== null) client.write(`Aviso: ${message}`);
+    if (client !== from && client !== null)
+      client.write(
+        Buffer.from(JSON.stringify({ message: `Aviso: ${message}` }))
+      );
   });
 }
 
 function isNickRepeated(nick) {
   let repeated = false;
   clients.forEach((client) => {
-    if (client.nick === nick) repeated = true;
+    if (client !== null && client.nick === nick) repeated = true;
   });
   return repeated;
+}
+
+function socketWrite(msg, socket) {
+  socket.write(Buffer.from(JSON.stringify({ message: msg })));
+}
+
+function clientsLength(array) {
+  let length = 0;
+  array.forEach((client) => {
+    if (client !== null) length++;
+  });
+  return length;
 }
